@@ -13,7 +13,7 @@ def print_warning(text):
 
 class MotorControl:
 
-	def __init__(self, device="/dev/ttyUSB0"):
+	def __init__(self, device="/dev/ttyACM0"):
 
 		# self.ser = serial.Serial(device, 115200)
 		self.ser = serial.rs485.RS485(device, 115200, timeout=0)
@@ -61,7 +61,8 @@ class MotorControl:
 		"""
 	 	connect only 1 motor, and call this function to set the ID of that motor
 		"""
-
+		print("THIS FUNCTION IS BREAKING THE MOTOR CURRENLTY")
+		return
 		SET_ID = struct.pack(self.str_10bytes, 0xAA, 0x55, 0x53, _id, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE)
 		for i in range(5):
 			self.ser.write(SET_ID)
