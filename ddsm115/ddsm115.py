@@ -1,3 +1,6 @@
+import threading
+import typing
+from enum import IntEnum
 import serial
 import serial.rs485
 import struct
@@ -11,13 +14,24 @@ def print_info(text):
 def print_warning(text):
 	print("DDSM115_WARNING | {}".format(text))
 
+class DriveMode(IntEnum):
+	CURRENT = 1
+	VELOCITY = 2
+	POSITION = 3
+
+
 class MotorControl:
 
 	def __init__(self, device="/dev/ttyACM0"):
 
 		# self.ser = serial.Serial(device, 115200)
-		self.ser = serial.rs485.RS485(device, 115200, timeout=0)
-		self.ser.rs485_mode = serial.rs485.RS485Settings()
+		try:
+			self.ser = serial.rs485.RS485(device, 115200, timeout=0)
+			self.ser.rs485_mode = serial.rs485.RS485Settings()
+		except serial.serialutil.SerialException as e:
+			print_warning(e)
+			self.ser = None
+
 		self.crc8 = crcmod.predefined.mkPredefinedCrcFun('crc-8-maxim')
 		self.str_10bytes = ">BBBBBBBBBB"
 		self.str_9bytes = ">BBBBBBBBB"
@@ -25,8 +39,26 @@ class MotorControl:
 		self.prev_fb_rpm = [0,0,0,0]
 		self.prev_fb_cur = [0,0,0,0]
 
+		self.__current_drive_mode: typing.Optional[DriveMode] = None
+
+		threading.Thread(target=self.thread_establish_serial_connection).start()
+
+	# def cb_serial_connection_established(self):
+	# 	self.set_drive_mode(1, 3)
+
 	def close(self):
 		self.ser.close()
+
+	def thread_establish_serial_connection(self):
+		while True:
+			if self.ser is None:
+				try:
+					self.ser = serial.rs485.RS485("/dev/ttyACM0", 115200, timeout=0)
+					self.ser.rs485_mode = serial.rs485.RS485Settings()
+				except serial.serialutil.SerialException as e:
+					print_warning(e)
+					self.ser = None
+			time.sleep(1)
 
 	######################
 	### Math Functions ###
@@ -112,25 +144,19 @@ class MotorControl:
 		self.ser.write(cmd_bytes)
 		res = self.ser.read_until(size=10)
 
-	def set_drive_mode(self, _id: int, _mode: int):
+	def set_drive_mode(self, _id: int, _mode: DriveMode):
 		"""
 		_mode: 0x01 current (torque), 0x02 velocity, 0x03 position
 		"""
 
-		if _mode == 1:
-			print_info(f"Set {_id} as current (torque) mode")
-		elif _mode == 2:
-			print_info(f"Set {_id} as velocity mode")
-		elif _mode == 3:
-			print_info(f"Set {_id} as position mode")
-		else:
-			print_info(f"Error {_mode} is unknown")
+		print_info(f"Set {_id} as {_mode.name} mode")
 
 		cmd_bytes = struct.pack(self.str_10bytes, _id, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, _mode)
 		self.ser.write(cmd_bytes)
 
-	def get_motor_id(self):
+		self.__current_drive_mode = _mode
 
+	def get_motor_id(self):
 		ID_QUE = struct.pack(self.str_10bytes, 0xC8, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDE)
 		self.ser.write(ID_QUE)
 		data = self.ser.read_until(size=10)
@@ -247,13 +273,15 @@ class MotorControl:
 
 		return fb_rpm, fb_cur, error
 
+	def get_drive_mode(self):
+		return self.__current_drive_mode
 
 if __name__ == "__main__":
 
 	a = MotorControl()
 
-	a.set_drive_mode(1, 2)
-	a.send_rpm(1, 30)
+	# a.set_drive_mode(1, 2)
+	# a.send_rpm(1, 30)
 
 
 	# while True:
