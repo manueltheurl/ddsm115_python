@@ -99,11 +99,17 @@ class MotorControl:
 		for i in range(5):
 			self.ser.write(SET_ID)
 
-	def send_rpm(self, _id: int, rpm):
+	def send_rpm(self, _id: int, rpm, acceleration_time=0):
+		"""
+
+		:param _id:
+		:param acceleration_time: Unit is 0.1 ms per rpm. If set to 0, its also 0.1 ms, 10 e.g. is 1 ms, up to 255 is 25.5 ms
+		:return:
+		"""
 
 		rpm = int(rpm)
 		rpm_ints = self.Int16ToBytesArray(rpm)
-		cmd_bytes = struct.pack(self.str_9bytes, _id, 0x64, rpm_ints[0], rpm_ints[1], 0x00, 0x00, 0x00, 0x00, 0x00)
+		cmd_bytes = struct.pack(self.str_9bytes, _id, 0x64, rpm_ints[0], rpm_ints[1], 0x00, 0x00, acceleration_time, 0x00, 0x00)
 		cmd_bytes = self.crc_attach(cmd_bytes)
 
 		while not self.ser.writable():
@@ -138,7 +144,6 @@ class MotorControl:
 		# print(cmd_bytes)
 
 	def set_brake(self, _id: int):
-
 		cmd_bytes = struct.pack(self.str_9bytes, _id, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00)
 		cmd_bytes = self.crc_attach(cmd_bytes)
 		self.ser.write(cmd_bytes)
