@@ -11,8 +11,10 @@ import time
 def print_info(text):
 	print("DDSM115_INFO | {}".format(text))
 
+
 def print_warning(text):
 	print("DDSM115_WARNING | {}".format(text))
+
 
 class DriveMode(IntEnum):
 	CURRENT = 1
@@ -144,10 +146,13 @@ class MotorControl:
 		# print(cmd_bytes)
 
 	def set_brake(self, _id: int):
-		cmd_bytes = struct.pack(self.str_9bytes, _id, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00)
-		cmd_bytes = self.crc_attach(cmd_bytes)
-		self.ser.write(cmd_bytes)
-		res = self.ser.read_until(size=10)
+		try:
+			cmd_bytes = struct.pack(self.str_9bytes, _id, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00)
+			cmd_bytes = self.crc_attach(cmd_bytes)
+			self.ser.write(cmd_bytes)
+			res = self.ser.read_until(size=10)
+		except AttributeError:
+			print_warning("No serial connection")
 
 	def set_drive_mode(self, _id: int, _mode: DriveMode):
 		"""
