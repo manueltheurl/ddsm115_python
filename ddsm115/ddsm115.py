@@ -8,6 +8,30 @@ import crcmod.predefined
 import numpy as np
 import time
 
+
+try:
+	import RPi.GPIO as GPIO
+	on_rpi = True
+
+	"""
+	Trying to use the hardware serial port that is used from the RS485 CAN HAT, for that we need to enable the 
+	hardware serial port by:
+	
+	sudo raspi-config
+	Select Interfacing Options -> Serial, disable shell access, and enable the hardware serial port
+	
+	Then the serial port will be available at /dev/ttyS0	
+	"""
+
+
+except ImportError:
+	on_rpi = False
+
+	"""
+	Trying to use the USB serial port that is used from the RS485 USB dongle
+	It will be available at /dev/ttyACM0 or /dev/ttyUSB0 depending on the dongle
+	"""
+
 def print_info(text):
 	print("DDSM115_INFO | {}".format(text))
 
@@ -24,9 +48,7 @@ class DriveMode(IntEnum):
 
 class MotorControl:
 
-	def __init__(self, device="/dev/ttyACM0"):
-
-		# self.ser = serial.Serial(device, 115200)
+	def __init__(self, device="/dev/ttyS0" if on_rpi else "/dev/ttyACM0"):
 		try:
 			self.ser = serial.rs485.RS485(device, 115200, timeout=0)
 			self.ser.rs485_mode = serial.rs485.RS485Settings()
